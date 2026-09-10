@@ -88,7 +88,8 @@ a {
     color: darkblue;
 }
 span {
-    margin: 10px 0;
+
+    font-family: "League Spartan";
 }
 
 /* --------- */
@@ -196,10 +197,12 @@ div#card-text-container {               /* styling card text area */
     background-color: #fafaf908;
 }
 div.text-line-div {                     /* individual lines from card text area */
+    /*
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
     gap: 0 5px;
+    */
     margin: 3px;
 }
 

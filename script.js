@@ -62,9 +62,18 @@ const writtenMana = {
     'R/G': {word: 'red/green', amount: 0},
     'R/W': {word: 'red/white', amount: 0},
     'G/W': {word: 'green/white', amount: 0},
-    'G/B': {word: 'green/blue', amount: 0},
+    'G/U': {word: 'green/blue', amount: 0},
+    'W/U/P': {word: 'white/blue or double that in life', amount: 0},
+    'W/B/P': {word: 'white/black or double that in life', amount: 0},
+    'B/R/P': {word: 'black/red or double that in life', amount: 0},
+    'B/G/P': {word: 'black/green or double that in life', amount: 0},
+    'U/B/P': {word: 'blue/black or double that in life', amount: 0},
+    'U/R/P': {word: 'blue/red or double that in life', amount: 0},
+    'R/G/P': {word: 'red/green or double that in life', amount: 0},
+    'R/W/P': {word: 'red/white or double that in life', amount: 0},
+    'G/W/P': {word: 'green/white or double that in life', amount: 0},
+    'G/U/P': {word: 'green/blue or double that in life', amount: 0},
 }
-
 //-------------------------------------------------------------------------
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -72,7 +81,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 })
 
 randomBtn.addEventListener('click', async () => {
-
     for (const manaObjectKey in writtenMana) {
         writtenMana[manaObjectKey].amount = 0;
     }
@@ -87,16 +95,20 @@ randomBtn.addEventListener('click', async () => {
 const queryInput = document.getElementById('query');
 /*
 TO DO:
+    - formatCardText: når mana:{G/U/P} if (`${teksten} ` er etter "(" og før "can be paid") { ? fjern teksten helt ? }
+    - counter keywords objects (snow, acorn, ticket osv.)
     - filterfunksjonalitet for å unngå kort som er illegal i standard og/eller commander
     - ENTEN query layout:normal, ELLER lag custom targeting for transform/saga/adventure
-    - lag complicatedMana og kanskje kondenser basicMana eller merge dem om mulig
 TO MAYBE DO:
     - fade 0.5s fra loading placeholder til lasta bilde
     - finn og add symboler til ting ({T} = tapsymbol, manasymbol, osv.)
     - color teksten til manaen i samme farge, da må manaInfo være i div
+    - fiks color gradient rekkefølge
 DONE:
     - splitt opp getdata sånn at all currentCard mappingen er i sin egen funksjon under
     - FIKS manaCostArray is null på land
+    - lag complicatedMana og kanskje kondenser basicMana eller merge dem om mulig
+    - fiks keywords case sensitive bullshittery og spaced keywords some first strike
 */
 
 // HUSK å fjerne queryInput consten over ^ og fjern queryInput.value fra encoded under v
@@ -108,54 +120,46 @@ DONE:
 async function getData() {
     const encoded = encodeURIComponent("lang:en " + queryInput.value);
     // https://scryfall.com/docs/syntax
-    // -----------------
     const result = await fetch(`https://api.scryfall.com/cards/random?q=${encoded}`, {
         headers:{
-            "User-Agent": "Å",
+            "User-Agent": "A",
             "Accept":"application/json"
         }
     });
+
     const data = await result.json();
+    await setData(data);
 
     console.log("------------------------------------------------------");
     console.log(data);
-
-    await setData(data);
 }
 
 // -------------------------------------------------------------------------------------
 // -------------------------------------------------------------------------------------
 
 async function setData(data) {
-    (() => {
-        if (data.image_uris) {
-            if (data.image_uris.png) {
-                currentCard.imageUrl = data.image_uris.png;
-            } else if (data.image_uris.large) {
-                currentCard.imageUrl = data.image_uris.large;
-            } else {
-                currentCard.imageUrl = data.image_uris.normal;
-            }
+
+    if (data.image_uris) {
+        if (data.image_uris.png) {
+            currentCard.imageUrl = data.image_uris.png;
+        } else if (data.image_uris.large) {
+            currentCard.imageUrl = data.image_uris.large;
+        } else {
+            currentCard.imageUrl = data.image_uris.normal;
         }
-        else {
-            currentCard.imageUrl = imgMissing;
-        }
-    })();
+    } else currentCard.imageUrl = imgMissing;
+
     currentCard.scryfallUrl = data.scryfall_uri;
     currentCard.name = data.name;
     currentCard.colorIdentity = data.color_identity;
-    // currentCard.manaCost = data.mana_cost;
-    // if (!data.mana_cost) {
-    //     currentCard.manaCost = '';
-    // }
     currentCard.manaCost = data.mana_cost ?? '';
-    // currentCard.manaCost = data.mana_cost.match(/(?<={)[^}]+(?=})/g) ?? '';
-
     currentCard.typeLine = data.type_line;
     currentCard.types = currentCard.typeLine.split(' ');
-    currentCard.keywords = data.keywords;
     currentCard.cardText = data.oracle_text;
-        
+
+    data.keywords.forEach(keyword => {
+        currentCard.keywords.push(keyword.toLowerCase());
+    })
     console.log("---------");
     console.log(currentCard);
 }
@@ -174,9 +178,7 @@ async function buildPage() {
     image.setAttribute('title', 'Click to view card on the Scryfall website');
     image.addEventListener('mousedown', (e) => {
         e.preventDefault();
-        if (e.button === 2) {
-            return;
-        }
+        if (e.button === 2) return; // prevent opening if right-click
         window.open(currentCard.scryfallUrl);
     })
     cardContainer.append(image);
@@ -202,118 +204,55 @@ async function buildPage() {
 // --------------------------------Helper functions-------------------------------------
 // -------------------------------------------------------------------------------------
 
-// function formatMana() {
-//     return currentCard.manaCost.match(/\d+|[WUBRGXC]/g);
-// }
-// ---------------------------------------------------------
-// function formatCardText(text) {
-//     // if (text.includes('{')) {
-//     //     const bracketlessText = text.pop().shift();
-//     //     if (bracketlessText === 'T' || 'Q') {
-//     //         return 'T' ? 'Tap' : 'Untap';
-//     //     } else if (/*number*/) {
-//     //         return /* number Any */
-//     //     }
-    
-//         //map til writtenMana arrayet og lag ny const som bruker words fra det
-//         //return den nye consten
-//     }
-// }
-// ---------------------------------------------------------
-// function formatCardText(text) {
-//     let temp;
-//     text.matchAll(/{([0-9]+|[TQ])}/gm).forEach((match) => {
-//         temp += match[1];
-//     })
-//     return temp;
-// }
-// ---------------------------------------------------------
 function formatCardText(text) {
     const abilityCostGroups = text.match(/\{[^{}]*\}(?:\{[^{}]*\})*/g);
-    console.log(abilityCostGroups);
 
     if (abilityCostGroups) {
         let formattedGroups = []
 
-        abilityCostGroups.forEach((costGroup) => {
+        abilityCostGroups.forEach((costGroup, index) => {
+            resetAmount();
             let formattedCosts = []
 
-            for (let outerKey in writtenMana) {
-                for (let innerKey in writtenMana[outerKey]) {
-                    if (innerKey === 'amount') {
-                        writtenMana[outerKey][innerKey] = 0;
-                    }
-                }
-                console.log(writtenMana[outerKey].amount);
-            }
-
             costGroup.match(/(?<={)[^}]+(?=})/g).forEach(cost => {
-                //formattedCosts.push(cost);
-                // gjør dette om til proper formatering med ting fra previous attempt
                 if (writtenMana[cost]) {
+                    if (cost.match(/\((.*?)(?:can be paid)/gi)) {
+                        console.log('canbepaid-test:')
+                        console.log(cost + "canbepaid")
+                        return;
+                    }
                     writtenMana[cost].amount++;
                     if (writtenMana[cost].amount > 1) {
                         formattedCosts.pop();
                     }
+                    console.log('this isnt supposed to run if it canbepaid');
                     formattedCosts.push(`${writtenMana[cost].amount} ${writtenMana[cost].word}`);
-                    console.log(writtenMana[cost].amount);
-                    // Object.keys(writtenMana).forEach(key => {
-                    //     if (key === 'amount') {writtenMana[key] = 0};
-                    // });
-                    
-                } else if (cost.match(/(\d)/g)) {
-                    formattedCosts.push(`${cost} of any color`);
-                } else if (cost === 'T' || cost === 'Q') {
-                    formattedCosts.push(cost === 'T' ? 'Tap' : 'Untap');
-                } else {
-                    return;
                 }
-                
+                if (cost.match(/(\d)/g)) {
+                    formattedCosts.push(`${cost} of any color`);
+                }
+                if (cost === 'T' || cost === 'Q') {
+                    formattedCosts.push(cost === 'T' ? 'Tap' : 'Untap');    // skal byttes ut med objektsjekk lignende writtenMana
+                }
             })
 
             const formattedGroup = formattedCosts.join(' + ');
             formattedGroups.push(formattedGroup);
+            text =  text.replace(costGroup, formattedGroups[index]);
+            resetAmount();
         })
-
-        const formattedCardText = formattedGroups.join(', ');
-        // ^ gjør dette om til funksjon som går over alle group matches og replacer med tilsvarende index av formattedGroupss
-        
-        console.log(formattedCardText)
     }
-
     return text;
-
-// -------------------------------- previous attempt --------------------------------------
-
-    // const formattedText = text.replaceAll(/({[\d\D]})/g, bracketedKey => {
-    //     const key = bracketedKey.slice(1, -1);
-
-    //     if (writtenMana[key]) {
-    //         return writtenMana[key].word;
-    //     } else if (key.match(/(\d)/g)) {
-    //         return `${key} of any color`;
-    //     } else if (key === 'T' || key === 'Q') {
-    //         const tappyWordFromKey = key === 'T' ? 'Tap' : 'Untap';
-    //         return tappyWordFromKey;
-    //     } else {return key;}
-    // })
-    // return formattedText;
-
-    //----------------------- first attempt ------------------------------
-
-    // const keys = text.match(/(?<={)[^}]+(?=})/g);
-    // const convertedWord = keys.map((key) => {
-    //     if (writtenMana[key]) {
-    //         return writtenMana[key].word;
-    //     } else if (key.match(/(?<={)\d+(?=})/g)) {
-    //         return `${key} of any color`;
-    //     } else if (key === 'T' || key === 'Q') {
-    //         const tappyWordFromKey = key === 'T' ? 'Tap' : 'Untap';
-    //         return tappyWordFromKey;
-    //     } else {return key;}
-    // })
-    // const formattedText = text.replaceAll(keys, convertedWord);
-    // return formattedText;
+}
+// ---------------------------------------------------------
+function resetAmount() {
+    for (let outerKey in writtenMana) {
+        for (let innerKey in writtenMana[outerKey]) {
+            if (innerKey === 'amount') {
+                writtenMana[outerKey][innerKey] = 0;
+            }
+        }
+    }
 }
 // ---------------------------------------------------------
 function getGradient(gradientVersion) {
@@ -342,73 +281,16 @@ function makeTitle() {
     return cardNameDiv;
 }
 // ---------------------------------------------------------
-// the old makeManaInfo:
-/*
-function makeManaInfo() {
-    // if (currentCard.manaCost.includes("/")) {
-    //     return complicatedMana();
-    // } else {
-    //     return basicMana();
-    // }
-    return complicatedMana();
-}
-*/
-// ---------------------------------------------------------
-/*
-function basicMana() {
-    const writtenManaCost = formatMana();
-    if (!writtenManaCost) {
-        return '';
-    }
-
-    const manaTextWithDuplicates = writtenManaCost.map(color => {
-        if (color === '{0}') {
-            return;
-        }
-        return writtenMana[color] ?? `${color} Any`;
-    })
-
-// Kombinere duplicates. Eks. white | white | blue blir til 2 white | blue i stedet
-    let manaText = [];
-    let trackedWords = {
-        White: 0,
-        Blue: 0,
-        Black: 0,
-        Red: 0,
-        Green: 0,
-        X: 0,
-        Colorless: 0
-    }
-
-    manaTextWithDuplicates.forEach((word) => {
-        if (!trackedWords[word]) {
-            manaText.push(word);
-        }
-
-        trackedWords[word]++;
-        if (trackedWords[word] >= 1) {
-            manaText.pop();
-            manaText.push(`${trackedWords[word]} ${word}`);
-        }
-    });
-
-    const manaInfo = document.createElement('p');
-    manaInfo.textContent = `Cost: ${manaText.join(' + ')}`;
-
-    return manaInfo;
-}
-    */
-// ---------------------------------------------------------
 function makeManaInfo() {
     const manaCostArray = currentCard.manaCost.match(/(?<={)[^}]+(?=})/g);
     let manaText = [];
 
     if (manaCostArray) {
         manaCostArray.forEach((manaKey) => {
-            if (!writtenMana[manaKey]) {
-                manaText.push(`${manaKey} of any color`);
-                return;
-            }
+            if (manaKey.match(/(\d)/g)) {
+                    manaText.push(`${manaKey} of any color`);
+                    return;
+                }
 
             writtenMana[manaKey].amount++;
             if (writtenMana[manaKey].amount > 1) {
@@ -416,13 +298,9 @@ function makeManaInfo() {
             }
 
             manaText.push(`${writtenMana[manaKey].amount} ${writtenMana[manaKey].word}`);
-
-            console.log(writtenMana[manaKey].amount);
         });
     }
     
-    console.log(manaText);
-
     const manaInfo = document.createElement('p');
     manaInfo.textContent = `Cost: ${manaText.join(' + ')}`;
 
@@ -430,8 +308,8 @@ function makeManaInfo() {
 }
 // ---------------------------------------------------------
 function makeCardTypeInfo() {
-    console.log(currentCard.typeLine);
     console.log('-------------');
+    console.log(currentCard.typeLine);
     console.log(currentCard.types);
 
     const cardTypeInfo = document.createElement('div');
@@ -439,7 +317,7 @@ function makeCardTypeInfo() {
 
     currentCard.types.forEach((type) => {
         if (type === '—') {
-            const hyphen = document.createElement('p');
+            const hyphen = document.createElement('span');
             hyphen.textContent = type;
             cardTypeInfo.append(hyphen);
         } else {
@@ -450,78 +328,24 @@ function makeCardTypeInfo() {
             cardTypeInfo.append(typeLink);
         }
     });
-    console.log('---sss-s-s-s-------s-s-s-----');
     return cardTypeInfo;
 }
 // ---------------------------------------------------------
-/*
-function makeCardKeywords() {
-    const keywordSpan = document.createElement('span');
-    keywordSpan.id = "keyword-span";
-
-    currentCard.keywords.forEach((keyword) => {
-        const keywordLink = document.createElement('a');
-
-        const specifier = () => {
-            const cleanedKeyword = keyword.replaceAll('?', '\\?');
-
-            if (currentCard.cardText.includes(`${keyword} {`)) {
-                try {
-                    const dynamicExpression = `(?<=${cleanedKeyword} {)([^}]+)(?=})`;
-                    const dynamicRegex = new RegExp(dynamicExpression, 'g');
-
-                    const s = currentCard.cardText.match(dynamicRegex);
-                    return s ? s.join(', ') : '';
-
-                } catch (error) {
-                    return '';
-                }
-            }
-            return '';
-        }
-        keywordLink.textContent = `${keyword} ${specifier()}`;
-        keywordLink.href = `https://scryfall.com/search?q=kw%3A%22${keyword}%22`;
-        keywordLink.target = '_blank';
-        keywordSpan.append(keywordLink);
-        if (currentCard.cardText.includes(keyword)) {
-            currentCard.cardText = currentCard.cardText.replace(keyword, '');
-        }
-    })
-    return keywordSpan;
-} */
-// ---------------------------------------------------------
 function makeCardText() {
+    if (!currentCard.cardText) return '';
+
     const cardTextContainer = document.createElement('div');
     cardTextContainer.id = 'card-text-container';
 
-    //console.log(formatCardText("Multikicker {1}{U} (You may pay an additional {1}{U} any number of times as you cast this spell.)\nCounter target spell unless its controller pays {2}. Draw a card for each time Spell Contortion was kicked."));
-    //const formattedCardText = formatCardText(currentCard.cardText);
-    //const formattedCardText = formatCardText("Scavenge {4}{G}{G} ({4}{G}{G}, Exile this card from your graveyard: Put a number of +1/+1 counters equal to this card's power on target creature. Scavenge only as a sorcery.)")
-    const formattedCardText = formatCardText("This land enters tapped.\n{T}: Add {B}.\n{1}{B}{R}{R}, {T}, Sacrifice this land: It deals 3 damage to target player. That player discards a card. Activate only as a sorcery.");
-    console.log('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
-    console.log(formattedCardText);
+    const formattedCardText = formatCardText(currentCard.cardText);
 
     const cardTextLines = formattedCardText.split('\n');
+    
     cardTextLines.forEach((textLine) => {
-        
         const textLineDiv = document.createElement('div');
         textLineDiv.className = 'text-line-div';
 
-        const cardTextArray = textLine.split(' ');
-        cardTextArray.forEach((cardWord) => {
-
-            if (currentCard.keywords.includes(cardWord)) {
-                const keywordLink = document.createElement('a');
-                keywordLink.textContent = cardWord;
-                keywordLink.href = `https://scryfall.com/search?q=kw%3A%22${cardWord}%22`;
-                keywordLink.target = '_blank';
-                textLineDiv.append(keywordLink);
-            } else {
-                const normalWord = document.createElement('p');
-                normalWord.textContent = cardWord;
-                textLineDiv.append(normalWord);
-            }
-        })
+        assignLinksAndSpans(textLine, currentCard.keywords, textLineDiv);
         cardTextContainer.append(textLineDiv);
 
         const backgroundColors = getGradient(manaPastels);
@@ -531,4 +355,35 @@ function makeCardText() {
         );
     })
     return cardTextContainer;
+}
+// ---------------------------------------------------------
+function assignLinksAndSpans(text, keywords, container) {
+    const sortedKeywords = [...keywords].sort((a, b) => b.length - a.length);
+    // ^ sikrer at f.eks "double strike" prioriteres før "double"
+    const cleanRegexSearch = sortedKeywords
+        .map(kw => kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))   // escaper spesialtegn
+        .join('|'); // konverterer til string med | (regex OR) imellom keywords
+
+    const keywordMatch = new RegExp(`(?<=^|[^a-zA-Z0-9])(${cleanRegexSearch})(?=$|[^a-zA-Z0-9])`, 'gi');
+    // ^ regexen isolerer matches så f.eks "screw" i teksten ikke trigger "crew" keywordet
+    container.textContent = ''; 
+    const segments = text.split(keywordMatch);
+
+    segments.forEach(segment => {
+        if (!segment) return;
+        const isKeyword = keywords.some(kw => kw.toLowerCase() === segment.toLowerCase());
+
+        if (isKeyword) {
+            const keywordLink = document.createElement('a');
+            keywordLink.textContent = segment;
+            const encodedKeyword = encodeURIComponent(segment.replace(' ', ''));
+            keywordLink.href = `https://scryfall.com/search?q=kw%3A${encodedKeyword}`;
+            keywordLink.target = '_blank';
+            container.append(keywordLink);
+        } else {
+            const normalTextSpan = document.createElement('span');
+            normalTextSpan.textContent = segment;
+            container.append(normalTextSpan);
+        }
+    });
 }
