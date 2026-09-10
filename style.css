@@ -7,7 +7,7 @@
     --h1-size-2: 2.5em;
     --h2-size-1: 1.5em;
     --h2-size-2: 2em;
-    --mana-border: linear-gradient(to right, var(--subtle), var(--subtle));
+    --mana-border: linear-gradient(to right, var(--bg-color), var(--bg-color));
 }
 .league-spartan {
     font-family: "League Spartan", sans-serif;
@@ -78,7 +78,7 @@ label {
     color: var(--bg-color);
     margin-right: 10px;
 }
-p, a {
+p, a, span {
     font-family: "League Spartan";
     margin: 0;
     text-decoration: none;
@@ -86,10 +86,6 @@ p, a {
 }
 a {
     color: darkblue;
-}
-span {
-
-    font-family: "League Spartan";
 }
 
 /* --------- */
