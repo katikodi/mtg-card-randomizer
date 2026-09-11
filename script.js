@@ -9,6 +9,12 @@ const imgMissing = "src/card-image-missing.png";
 // --------------------------------Global objects---------------------------------------
 // -------------------------------------------------------------------------------------
 
+// let isCardMissing = false;
+// let multipleFaces = false;
+// let currentFace = multipleFaces ? "front" || "back" : null;
+
+let layout = '';
+
 let currentCard = {
     imageUrl: "",
     scryfallUrl: "",
@@ -24,6 +30,7 @@ let currentCard = {
         commander: "",
     },
 }
+let currentCardBack = currentCard;
 
 const manaColors = {
     W: '#D6D4C2',
@@ -103,12 +110,10 @@ const writtenMana = {
 }
 //-------------------------------------------------------------------------
 
-let isCardMissing = false;
-
 document.addEventListener("DOMContentLoaded", async () => {
     isCardMissing = false;
-    delete currentCard.front;
-    delete currentCard.back;
+    // delete currentCard.front;
+    // delete currentCard.back;
     await buildPage();
 })
 
@@ -118,8 +123,8 @@ randomBtn.addEventListener('click', async () => {
     }
 
     isCardMissing = false;
-    delete currentCard.front;
-    delete currentCard.back;
+    // delete currentCard.front;
+    // delete currentCard.back;
     await buildPage();
 })
 
@@ -129,32 +134,39 @@ randomBtn.addEventListener('click', async () => {
 
 const queryInput = document.getElementById('query');
 /*
-TO DO:
+TO DO GENERELT:
+    - FIKS card face targeting
     - FIKS at flere vinduer dukker opp når man trykker på kortet
+    - ikke vis noe cardtextdiv hvis kortet ikke har card text
     - filterfunksjonalitet for å unngå kort som er illegal i standard og/eller commander
     - ENTEN query layout:normal, ELLER lag custom targeting for transform/saga/adventure
 TO MAYBE DO:
+    - show year? yea probably
+    - putt power/toughness under cardTextDiv, prototype P/T kan stå separat etter // f.eks
     - fade 0.5s fra loading placeholder til lasta bilde
-    - finn og add symboler til ting ({T} = tapsymbol, manasymbol, osv.)
+    - add symbolenes svg til ting ({T} = tapsymbol svg, manasymbol svg, osv.)
     - color teksten til manaen i samme farge, da må manaInfo være i div
     - fiks color gradient rekkefølge
+    - fiks sånn at hvis du trykker igjen imens det laster så kanselleres første getData
 DONE:
     - splitt opp getdata sånn at all currentCard mappingen er i sin egen funksjon under
     - FIKS manaCostArray is null på land
     - lag complicatedMana og kanskje kondenser basicMana eller merge dem om mulig
     - fiks keywords case sensitive bullshittery og spaced keywords some first strike
-    - formatCardText: når mana:{G/U/P} if (`${teksten} ` er etter "(" og før "can be paid") { ? fjern teksten helt ? }
+    - formatCardText: når mana:{G/U/P} if (`${teksten} ` er etter "(" og før "can be paid") { ? }
     - counter keywords objects (snow, acorn, ticket osv.)
 */
 
 // HUSK å fjerne queryInput consten over ^ og fjern queryInput.value fra encoded under v
+
 
 // -------------------------------------------------------------------------------------
 // ---------------------------------Main functions--------------------------------------
 // -------------------------------------------------------------------------------------
 
 async function getData() {
-    const encoded = encodeURIComponent("lang:en " + "include:extras " + queryInput.value);
+    const encoded = encodeURIComponent("lang:en " + "include:extras "
+        + "not:battle not:front_card not:art_series not:double_faced_token " + queryInput.value);
     // https://scryfall.com/docs/syntax
     const result = await fetch(`https://api.scryfall.com/cards/random?q=${encoded}`, {
         headers:{
@@ -173,36 +185,24 @@ async function getData() {
 // -------------------------------------------------------------------------------------
 // -------------------------------------------------------------------------------------
 
-async function setData(data) {
-    setImage(data);
-    
-    if (data.layout !== 'normal') {
-        setComplicatedCardData(data);
-        return;
-    }
+async function setData(data) {    
     if (data.status === 404) {
         isCardMissing = true;
         currentCard.imageUrl = imgMissing;
         return;
     }
 
+    const faces = handleLayouts(data);
 
-    currentCard.scryfallUrl = data.scryfall_uri;
-    currentCard.name = data.name;
-    currentCard.colorIdentity = data.color_identity;
-    currentCard.manaCost = data.mana_cost ?? '';
-    currentCard.typeLine = data.type_line;
-    currentCard.types = currentCard.typeLine.split(' ');
-    currentCard.cardText = data.oracle_text;
+    setCardFrontData(faces);
 
-    data.keywords.forEach(keyword => {
-        currentCard.keywords.push(keyword.toLowerCase());
-    })
+    if (data.card_faces) {
+        setCardBackData(faces);
+    }
 
     console.log("---------");
     console.log(currentCard);
 }
-
 
 // -------------------------------------------------------------------------------------
 // -------------------------------------------------------------------------------------
@@ -235,7 +235,27 @@ async function buildPage() {
         return;
     }
 
-    if (currentCard.front) {
+    /*
+    NON-NORMAL LAYOUTS THAT BEHAVE LIKE NORMAL:
+        saga - mutate - case -> (do nothing)
+        leveler - class -> (HELST append en divider før tekstlinja når tekstlinja viser til ny level (regex))
+        emblem - token - scheme - vanguard -> (fjern "cost:" linja)
+        planar -> (--||--, roter kort og divider, css main-container [column, align center, justify start])
+        prototype -> (name i dashed border med prototype fargen, KANSKJE gjør P/T mer tydelig)
+        augment -> (fjern cost og kanskje add link til "host" type cards)
+        host -> (add "when augmented, remove 'when this creature enters' from its card text")
+    MULTI-FACED CARD LAYOUTS:
+        - meld: ignorer baksiden, vis fremsiden, og add links til "melds with" og "to become" kortene(tekst)
+        - flip - adventure - split - prepare:
+                hent begge, rendre begge tekstene samtidig (beware mana costs!)
+        - transform: hent begge, rendre [0] + snuknapp som bytter både bilde og tekst, vis "transformed" på [1]
+        - reversible_card: hent begge, randomize hvilken som rendres + snuknapp som bytter bilde
+        - modal_dfc: --------------------------------||--------------------------------- og tekst
+    */
+    const l = currentCard.layout;
+    if (l === 'meld' || l === 'transform' || l === 'flip' || l === 'adventure' ||
+        l === 'split' || l === 'prepare' || l === 'reversible_card' || l === 'modal_dfc') {
+        
         const temporary = document.createElement('p');
         temporary.textContent = 'to be fixed';
         infoContainer.append(temporary);
@@ -254,46 +274,75 @@ async function buildPage() {
     infoContainer.append(title, cardAttributes);
 }
 
+
 // -------------------------------------------------------------------------------------
 // --------------------------------Helper functions-------------------------------------
 // -------------------------------------------------------------------------------------
 
-function setImage(data) {
-    if (data.image_uris) {
-        if (data.image_uris.png) {
-            currentCard.imageUrl = data.image_uris.png;
-        } else if (data.image_uris.large) {
-            currentCard.imageUrl = data.image_uris.large;
-        } else {
-            currentCard.imageUrl = data.image_uris.normal;
-        }
-    } else currentCard.imageUrl = imgMissing;
+function handleLayouts(data) {
+    const multiFaceLayouts = ['split', 'flip', 'transform', 'modal', 'double_faced', 'art_series', 'reversible', 'saga'];
+
+    if (multiFaceLayouts.includes(data.layout)) {
+        return data.card_faces ?? [{ ...data }]; 
+    }
+
+    return [{ ...data }]; // pakker dataen inn i array for å targete på samme måte enten pakka inn i card_faces eller ikke
 }
 // ---------------------------------------------------------
-function setComplicatedCardData(data) {
-    if (data.layout === 'transform') {
-        currentCard.front = data.card_faces[0];
-        currentCard.back = data.card_faces[1];
+// function setComplicatedCardData(data) {
+//     if (data.layout === 'transform') {
+//         return;
+//     }
+// }
+// ---------------------------------------------------------
+function setCardFrontData(faces) {
 
-        console.log(currentCard.front);
-        console.log(currentCard.back);
+    if (faces[0].image_uris) {
+        if (faces[0].image_uris.png) {
+            currentCard.imageUrl = faces[0].image_uris.png;
+        } else if (faces[0].image_uris.large) {
+            currentCard.imageUrl = faces[0].image_uris.large;
+        } else {
+            currentCard.imageUrl = faces[0].image_uris.normal;
+        }
+    } else currentCard.imageUrl = imgMissing;
 
-        let currentFace = "front" || "back"
-        console.log(currentFace);
+    currentCard.scryfallUrl = faces[0].scryfall_uri;
+    currentCard.name = faces[0].name;
+    currentCard.colorIdentity = faces[0].color_identity;
+    currentCard.manaCost = faces[0].mana_cost ?? '';
+    currentCard.typeLine = faces[0].type_line;
+    currentCard.types = currentCard.typeLine ? currentCard.typeLine.split(' ') : '';
+    currentCard.cardText = faces[0].oracle_text;
 
-        currentCard[currentFace].scryfallUrl = data.scryfall_uri;
-        currentCard[currentFace].name = data.name;
-        currentCard[currentFace].colorIdentity = data.color_identity;
-        currentCard[currentFace].manaCost = data.mana_cost ?? '';
-        currentCard[currentFace].typeLine = data.type_line;
-        currentCard[currentFace].types = currentCard[currentFace].typeLine.split(' ');
-        currentCard[currentFace].cardText = data.oracle_text;
+    faces[0].keywords?.forEach(keyword => {
+        currentCard.keywords.push(keyword.toLowerCase());
+    })
+}
+// ---------------------------------------------------------
+function setCardBackData(card_faces) {
 
-        // TO DO on transformcards: (experimenting)
-        //button for switching which card face is shown
-        //build text for both
-        //trigger this function also on toggle button to swap currentFace, or move currentFace outside maybe?
-    }
+    if (card_faces[1].image_uris) {
+        if (card_faces[1].image_uris.png) {
+            currentCardBack.imageUrl = card_faces[1].image_uris.png;
+        } else if (card_faces[1].image_uris.large) {
+            currentCardBack.imageUrl = card_faces[1].image_uris.large;
+        } else {
+            currentCardBack.imageUrl = card_faces[1].image_uris.normal;
+        }
+    } else currentCardBack.imageUrl = imgMissing;
+
+    currentCardBack.scryfallUrl = card_faces[1].scryfall_uri;
+    currentCardBack.name = card_faces[1].name;
+    currentCardBack.colorIdentity = card_faces[1].color_identity;
+    currentCardBack.manaCost = card_faces[1].mana_cost ?? '';
+    currentCardBack.typeLine = card_faces[1].type_line;
+    currentCardBack.types = currentCardBack.typeLine ? currentCardBack.typeLine.split(' ') : '';
+    currentCardBack.cardText = card_faces[1].oracle_text;
+
+    card_faces[1].keywords?.forEach(keyword => {
+        currentCardBack.keywords.push(keyword.toLowerCase());
+    })
 }
 // ---------------------------------------------------------
 function formatCardText(text) {
@@ -371,8 +420,10 @@ function makeTitle() {
         "--mana-border",
         `linear-gradient(to right, ${borderColors.join(", ")})`
     )
-    if (currentCard.colorIdentity.length <= 0) {
+    if (currentCard.colorIdentity.length <= 0) /*or layout:prototype*/ {
         cardNameDiv.classList.add('colorless');
+        // if layout prototype,
+            // .colorless border = bordercolor
     }
 
     const cardName = document.createElement('h2');
@@ -388,7 +439,7 @@ function makeManaInfo() {
     if (manaCostArray) {
         manaCostArray.forEach((manaKey) => {
             if (manaKey.match(/(\d)/g)) {
-                    manaText.push(`${manaKey} of any color`);
+                    manaText.push(manaKey === '0' ? manaKey : `${manaKey} of any color`);
                     return;
                 }
 
@@ -448,6 +499,9 @@ function makeCardText() {
         textLineDiv.className = 'text-line-div';
 
         assignLinksAndSpans(textLine, currentCard.keywords, textLineDiv);
+
+        // if textLine starts with LEVEL, append some kind of divider first
+        // also if textLine is exactly "[any combi of {mana}]: Level [digit]"
         cardTextContainer.append(textLineDiv);
 
         const backgroundColors = getGradient(manaPastels);
