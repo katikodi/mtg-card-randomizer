@@ -1,3 +1,4 @@
 {
-    "workbench.colorTheme": "Bearded Theme Arc Blueberry"
+    "workbench.colorTheme": "Bearded Theme Arc Blueberry",
+    "liveServer.settings.port": 5501
 }

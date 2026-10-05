@@ -14,23 +14,31 @@
 <body>
     <header>
         <h1>Random MTG</h1>
-        <button id="get-random-btn">Get random card</button>
-
+        
         <div id="filters">
             <h3>Show only:</h3>
-            <input type="checkbox" name="legal-standard" id="legal-standard">
-            <label for="legal-standard">Legal in Standard</label>
-            <input type="checkbox" name="legal-commander" id="legal-commander">
-            <label for="legal-commander">Legal in Commander</label>
-            <input type="checkbox" name="legal-commander" id="legal-commander">
-            <label for="legal-commander">Valid commander</label>
+            <div id="all-filters">
+                <div id="filter-1">
+                    <input type="checkbox" name="legal-standard" id="legal-standard">
+                    <label for="legal-standard" class="filter-label">Legal in Standard</label>
+                </div>
+                <div id="filter-2">
+                    <input type="checkbox" name="legal-commander" id="legal-commander">
+                    <label for="legal-commander" class="filter-label">Legal in Commander</label>
+                </div>
+                <div id="filter-3">
+                    <input type="checkbox" name="legal-commander" id="legal-commander">
+                    <label for="legal-commander" class="filter-label">Valid commander</label>
+                </div>
+            </div>
         </div>
     </header>
+    <input type="text" id="query">
     <main>
-        <input type="text" id="query">
+        <button id="get-random-btn">Get random card</button>
         <div id="main-container">
             <div id="random-card-container">
-                <img id="image" src="src/card-image-loading.png"alt="Picture of the card"> 
+                <img id="image" src="src/card-image-loading.png"alt=""> 
             </div>
             <div id="divider"></div>
             <div id="card-attributes-container">

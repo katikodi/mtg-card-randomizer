@@ -9,28 +9,31 @@ const imgMissing = "src/card-image-missing.png";
 // --------------------------------Global objects---------------------------------------
 // -------------------------------------------------------------------------------------
 
-// let isCardMissing = false;
-// let multipleFaces = false;
-// let currentFace = multipleFaces ? "front" || "back" : null;
-
-let layout = '';
-
-let currentCard = {
-    imageUrl: "",
-    scryfallUrl: "",
-    name: "",
-    manaCost: "",
-    colorIdentity: [],
-    typeLine: "",
-    types: [],
-    keywords: [],
-    cardText: "",
+let outerAttributes = {
+    layout: '',
+    scryfallUrl: '',
+    releaseDate: '',
     legalities: {
-        standard: "",
-        commander: "",
-    },
+        standard: '',
+        commander: '',
+        isValidCommander: false
+    }
 }
-let currentCardBack = currentCard;
+
+class CardFace {
+    constructor() {
+        this.imageUrl = "";
+        this.name = "";
+        this.manaCost = "";
+        this.colorIdentity = [];
+        this.typeLine = "";
+        this.keywords = [];
+        this.cardText = "";
+    }
+}
+const currentCard = new CardFace();
+const currentCardBack = new CardFace();
+let showFrontFace = true;
 
 const manaColors = {
     W: '#D6D4C2',
@@ -108,24 +111,26 @@ const writtenMana = {
     '2/R': {fullText: 'red or double the mana of any colors', amount: 0},
     '2/G': {fullText: 'green or double the mana of any colors', amount: 0},
 }
+
+//let blobbedIMG;
 //-------------------------------------------------------------------------
 
 document.addEventListener("DOMContentLoaded", async () => {
     isCardMissing = false;
-    // delete currentCard.front;
-    // delete currentCard.back;
-    await buildPage();
+    image.src = imgLoading;
+    await getData();
+    await buildPage(currentCard);
 })
 
 randomBtn.addEventListener('click', async () => {
     for (const manaObjectKey in writtenMana) {
         writtenMana[manaObjectKey].amount = 0;
     }
-
+    
     isCardMissing = false;
-    // delete currentCard.front;
-    // delete currentCard.back;
-    await buildPage();
+    image.src = imgLoading;
+    await getData();
+    await buildPage(currentCard);
 })
 
 //-------------------------------------------------------------------------
@@ -135,19 +140,16 @@ randomBtn.addEventListener('click', async () => {
 const queryInput = document.getElementById('query');
 /*
 TO DO GENERELT:
-    - FIKS card face targeting
-    - FIKS at flere vinduer dukker opp når man trykker på kortet
-    - ikke vis noe cardtextdiv hvis kortet ikke har card text
+    - finn ut om isCardMissing trengs
     - filterfunksjonalitet for å unngå kort som er illegal i standard og/eller commander
     - ENTEN query layout:normal, ELLER lag custom targeting for transform/saga/adventure
 TO MAYBE DO:
-    - show year? yea probably
     - putt power/toughness under cardTextDiv, prototype P/T kan stå separat etter // f.eks
     - fade 0.5s fra loading placeholder til lasta bilde
     - add symbolenes svg til ting ({T} = tapsymbol svg, manasymbol svg, osv.)
     - color teksten til manaen i samme farge, da må manaInfo være i div
-    - fiks color gradient rekkefølge
     - fiks sånn at hvis du trykker igjen imens det laster så kanselleres første getData
+    - fiks automatisk download på open image in new tab
 DONE:
     - splitt opp getdata sånn at all currentCard mappingen er i sin egen funksjon under
     - FIKS manaCostArray is null på land
@@ -155,10 +157,12 @@ DONE:
     - fiks keywords case sensitive bullshittery og spaced keywords some first strike
     - formatCardText: når mana:{G/U/P} if (`${teksten} ` er etter "(" og før "can be paid") { ? }
     - counter keywords objects (snow, acorn, ticket osv.)
+    - FIKS at flere vinduer dukker opp når man trykker på kortet
+    - FIKS card face targeting
+    - ikke vis noe cardtextdiv hvis kortet ikke har card text
 */
 
 // HUSK å fjerne queryInput consten over ^ og fjern queryInput.value fra encoded under v
-
 
 // -------------------------------------------------------------------------------------
 // ---------------------------------Main functions--------------------------------------
@@ -170,7 +174,7 @@ async function getData() {
     // https://scryfall.com/docs/syntax
     const result = await fetch(`https://api.scryfall.com/cards/random?q=${encoded}`, {
         headers:{
-            "User-Agent": "A",
+            "User-Agent": "C",
             "Accept":"application/json"
         }
     });
@@ -178,52 +182,57 @@ async function getData() {
     const data = await result.json();
     await setData(data);
 
-    console.log("------------------------------------------------------");
-    console.log(data);
+    console.log('-------------------Original API data:------------------------\n', data);
 }
 
+
 // -------------------------------------------------------------------------------------
 // -------------------------------------------------------------------------------------
 
-async function setData(data) {    
+async function setData(data) {
     if (data.status === 404) {
         isCardMissing = true;
         currentCard.imageUrl = imgMissing;
         return;
     }
 
-    const faces = handleLayouts(data);
+    outerAttributes.layout = data.layout;
+    outerAttributes.scryfallUrl = data.scryfall_uri;
+    outerAttributes.releaseDate = data.released_at;
 
-    setCardFrontData(faces);
+    const faces = handleLayouts(data);
+    setCardFrontData(faces[0]);
 
     if (data.card_faces) {
-        setCardBackData(faces);
+        setCardBackData(faces[1]);
     }
 
-    console.log("---------");
-    console.log(currentCard);
+    // Setting the image urls manually
+    //currentCard.imageUrl = setImageData(faces[0].image_uris.png);
+
+    outerAttributes.legalities.standard = data.legalities.standard;
+    outerAttributes.legalities.commander = data.legalities.commander;
+    outerAttributes.legalities.isValidCommander = checkCommanderValidity();
 }
-
 // -------------------------------------------------------------------------------------
 // -------------------------------------------------------------------------------------
 
-async function buildPage() {
-    image.src = imgLoading;
-    await getData();
-
-    // ---------------------------------------------------------------
+function buildPage(face) {
+    console.log('-------- Outer Attributes --------\n', outerAttributes);
+    console.log('------FACE 1-------\n', currentCard);
+    console.log('------FACE 2-------\n', currentCardBack);
+// ---------------------------------------------------------------
     // image half:
     // -----------
-    image.src = currentCard.imageUrl;
+    image.src = face.imageUrl;
     image.setAttribute('title', 'Click to view card on the Scryfall website');
     image.addEventListener('mousedown', (e) => {
         e.preventDefault();
         if (e.button === 2) return; // prevent opening if right-click
-        window.open(currentCard.scryfallUrl);
+        window.open(outerAttributes.scryfallUrl, 'scryfall');
     })
-    cardContainer.append(image);
 
-    // ---------------------------------------------------------------
+// ---------------------------------------------------------------
     // info half:
     // -----------
     infoContainer.replaceChildren();
@@ -234,7 +243,7 @@ async function buildPage() {
         infoContainer.append(missingCardMessage);
         return;
     }
-
+// ------------------------------------------------------- TEMPORARY STUFF -----------------------------------------------------
     /*
     NON-NORMAL LAYOUTS THAT BEHAVE LIKE NORMAL:
         saga - mutate - case -> (do nothing)
@@ -252,8 +261,8 @@ async function buildPage() {
         - reversible_card: hent begge, randomize hvilken som rendres + snuknapp som bytter bilde
         - modal_dfc: --------------------------------||--------------------------------- og tekst
     */
-    const l = currentCard.layout;
-    if (l === 'meld' || l === 'transform' || l === 'flip' || l === 'adventure' ||
+    const l = outerAttributes.layout;
+    if (l === 'meld' || l === 'flip' || l === 'adventure' ||
         l === 'split' || l === 'prepare' || l === 'reversible_card' || l === 'modal_dfc') {
         
         const temporary = document.createElement('p');
@@ -261,15 +270,26 @@ async function buildPage() {
         infoContainer.append(temporary);
         return;
     }
+// ----------------------------------------------------- ^ TEMPORARY STUFF ^ ---------------------------------------------------
 
-    const title = makeTitle();
-    const manaInfo = makeManaInfo();
-    const cardTypeInfo = makeCardTypeInfo();
-    const cardText = makeCardText();
+    const title = makeTitle(face);
+    const manaInfo = makeManaInfo(face);
+    const cardTypeInfo = makeCardTypeInfo(face);
+    const cardText = makeCardText(face);
+    const releaseDate = makeReleaseDate();
 
     const cardAttributes = document.createElement('div');
     cardAttributes.className = 'card-attributes-inner-container';
-    cardAttributes.append(manaInfo, cardTypeInfo, cardText);
+    
+    cardAttributes.append(manaInfo, cardTypeInfo);
+    if (cardText !== '') {
+        cardAttributes.append(cardText);
+    }
+    if (l === 'transform') {
+        const flipButton = makeFlipButton();
+        cardAttributes.append(flipButton);
+    }
+    cardAttributes.append(releaseDate);
 
     infoContainer.append(title, cardAttributes);
 }
@@ -279,70 +299,234 @@ async function buildPage() {
 // --------------------------------Helper functions-------------------------------------
 // -------------------------------------------------------------------------------------
 
+function checkCommanderValidity() {
+    if (outerAttributes.legalities.commander === false) { return; }
+    if (currentCard.typeLine.includes("Legendary", "Creature") || currentCard.cardText.includes("can be your commander")) {
+        return true;
+    } else { return; }
+}
+// ---------------------------------------------------------
 function handleLayouts(data) {
     const multiFaceLayouts = ['split', 'flip', 'transform', 'modal', 'double_faced', 'art_series', 'reversible', 'saga'];
 
     if (multiFaceLayouts.includes(data.layout)) {
-        return data.card_faces ?? [{ ...data }]; 
+        return data.card_faces ?? [{ ...data }];
     }
 
-    return [{ ...data }]; // pakker dataen inn i array for å targete på samme måte enten pakka inn i card_faces eller ikke
+    return [{ ...data }]; // pakkes inn i array for å targete single-faced og multi-faced med samme struktur
 }
 // ---------------------------------------------------------
-// function setComplicatedCardData(data) {
-//     if (data.layout === 'transform') {
-//         return;
-//     }
-// }
-// ---------------------------------------------------------
-function setCardFrontData(faces) {
+function setCardFrontData(frontFace) {
+    setImageData(frontFace);
 
-    if (faces[0].image_uris) {
-        if (faces[0].image_uris.png) {
-            currentCard.imageUrl = faces[0].image_uris.png;
-        } else if (faces[0].image_uris.large) {
-            currentCard.imageUrl = faces[0].image_uris.large;
-        } else {
-            currentCard.imageUrl = faces[0].image_uris.normal;
-        }
-    } else currentCard.imageUrl = imgMissing;
+    currentCard.name = frontFace.name;
+    currentCard.colorIdentity = frontFace.colors;
+    currentCard.manaCost = frontFace.mana_cost ?? '';
+    currentCard.typeLine = frontFace.type_line;
+    currentCard.cardText = frontFace.oracle_text;
 
-    currentCard.scryfallUrl = faces[0].scryfall_uri;
-    currentCard.name = faces[0].name;
-    currentCard.colorIdentity = faces[0].color_identity;
-    currentCard.manaCost = faces[0].mana_cost ?? '';
-    currentCard.typeLine = faces[0].type_line;
-    currentCard.types = currentCard.typeLine ? currentCard.typeLine.split(' ') : '';
-    currentCard.cardText = faces[0].oracle_text;
-
-    faces[0].keywords?.forEach(keyword => {
+    frontFace.keywords?.forEach(keyword => {
         currentCard.keywords.push(keyword.toLowerCase());
     })
 }
 // ---------------------------------------------------------
-function setCardBackData(card_faces) {
-
-    if (card_faces[1].image_uris) {
-        if (card_faces[1].image_uris.png) {
-            currentCardBack.imageUrl = card_faces[1].image_uris.png;
-        } else if (card_faces[1].image_uris.large) {
-            currentCardBack.imageUrl = card_faces[1].image_uris.large;
+function setImageData(face) {
+    if (face.image_uris) {
+        if (face.image_uris.png) {
+            currentCard.imageUrl = face.image_uris.png;
+        } else if (face.image_uris.large) {
+            currentCard.imageUrl = face.image_uris.large;
         } else {
-            currentCardBack.imageUrl = card_faces[1].image_uris.normal;
+            currentCard.imageUrl = face.image_uris.normal;
+        }
+    } else currentCard.imageUrl = imgMissing;
+}
+// ---------------------------------------------------------
+function setCardBackData(backFace) {
+    if (backFace.image_uris) {
+        if (backFace.image_uris.png) {
+            currentCardBack.imageUrl = backFace.image_uris.png;
+        } else if (backFace.image_uris.large) {
+            currentCardBack.imageUrl = backFace.image_uris.large;
+        } else {
+            currentCardBack.imageUrl = backFace.image_uris.normal;
         }
     } else currentCardBack.imageUrl = imgMissing;
 
-    currentCardBack.scryfallUrl = card_faces[1].scryfall_uri;
-    currentCardBack.name = card_faces[1].name;
-    currentCardBack.colorIdentity = card_faces[1].color_identity;
-    currentCardBack.manaCost = card_faces[1].mana_cost ?? '';
-    currentCardBack.typeLine = card_faces[1].type_line;
-    currentCardBack.types = currentCardBack.typeLine ? currentCardBack.typeLine.split(' ') : '';
-    currentCardBack.cardText = card_faces[1].oracle_text;
+    currentCardBack.name = backFace.name;
+    currentCardBack.colorIdentity = backFace.colors;
+    currentCardBack.manaCost = backFace.mana_cost ?? '';
+    currentCardBack.typeLine = backFace.type_line;
+    currentCardBack.cardText = backFace.oracle_text;
 
-    card_faces[1].keywords?.forEach(keyword => {
+    backFace.keywords?.forEach(keyword => {
         currentCardBack.keywords.push(keyword.toLowerCase());
     })
+}
+// ---------------------------------------------------------
+function resetAmount() {
+    for (let outerKey in writtenMana) {
+        for (let innerKey in writtenMana[outerKey]) {
+            if (innerKey === 'amount') {
+                writtenMana[outerKey][innerKey] = 0;
+            }
+        }
+    }
+}
+// ---------------------------------------------------------
+function getGradient(gradientVersion) {
+    return currentCard.colorIdentity.map(identity => {
+        return gradientVersion[identity];
+    });
+}
+// ---------------------------------------------------------
+function makeTitle(face) {
+    const cardNameDiv = document.createElement('div');
+    cardNameDiv.id = 'card-name-div';
+    
+    const borderColors = getGradient(manaColors);
+
+    if (face.colorIdentity.length <= 0) /*or layout:prototype*/ {
+        outerAttributes.layout = 'prototype'
+        ? cardNameDiv.classList.add('prototypecolor')
+        : cardNameDiv.classList.add('colorless');
+        // if layout prototype,
+            // .colorless border = bordercolor
+    } else {
+        cardNameDiv.style.setProperty(
+            "--mana-border",
+            `linear-gradient(to right, ${borderColors.join(", ")})`
+        )
+    }
+
+    const cardName = document.createElement('h2');
+    cardName.textContent = face.name;
+    cardNameDiv.append(cardName);
+    return cardNameDiv;
+}
+// ---------------------------------------------------------
+function makeManaInfo(face) {
+    if (!face.manaCost) { return ''; }
+
+    const manaCostArray = face.manaCost.match(/(?<={)[^}]+(?=})/g);
+    let manaText = [];
+
+    if (manaCostArray) {
+        manaCostArray.forEach((manaKey) => {
+            if (manaKey.match(/(\d)/g)) {
+                    manaText.push(manaKey === '0' ? manaKey : `${manaKey} of any color`);
+                    return;
+                }
+
+            writtenMana[manaKey].amount++;
+            if (writtenMana[manaKey].amount > 1) {
+                manaText.pop();
+            }
+
+            manaText.push(`${writtenMana[manaKey].amount} ${writtenMana[manaKey].fullText}`);
+        });
+    } else {
+        manaText.push('none');
+    }
+    
+    const manaInfo = document.createElement('p');
+    manaInfo.textContent = `Cost: ${manaText.join(' + ')}`;
+
+    return manaInfo;
+}
+// ---------------------------------------------------------
+function makeCardTypeInfo(face) {
+    if (!face.typeLine) { return; }
+
+    const cardTypeInfo = document.createElement('div');
+    cardTypeInfo.id = "type-div";
+
+    const arrayFromTypeline = face.typeLine.split(' ');
+
+    arrayFromTypeline.forEach((type) => {
+        if (type === '—') {
+            const hyphen = document.createElement('span');
+            hyphen.textContent = type;
+            cardTypeInfo.append(hyphen);
+        } else {
+            const typeLink = document.createElement('a');
+            typeLink.textContent = type;
+            typeLink.href = `https://scryfall.com/search?q=type%3A${type}`;
+            typeLink.target = '_blank';
+            cardTypeInfo.append(typeLink);
+        }
+    });
+    return cardTypeInfo;
+}
+// ---------------------------------------------------------
+function makeCardText(face) {
+    if (!face.cardText) return '';
+
+    const cardTextContainer = document.createElement('div');
+    cardTextContainer.id = 'card-text-container';
+
+    const formattedCardText = formatCardText(face.cardText);
+
+    const cardTextLines = formattedCardText.split('\n');
+    
+    cardTextLines.forEach((textLine) => {
+        const textLineDiv = document.createElement('div');
+        textLineDiv.className = 'text-line-div';
+
+        assignLinksAndSpans(textLine, currentCard.keywords, textLineDiv);
+
+        // if textLine starts with LEVEL, append some kind of divider first
+        // also if textLine is exactly "[any combi of {mana}]: Level [digit]"
+        cardTextContainer.append(textLineDiv);
+
+        const backgroundColors = getGradient(manaPastels);
+        cardTextContainer.style.setProperty(
+            "--mana-border",
+            `linear-gradient(to right, ${backgroundColors.join(", ")})`
+        );
+    })
+    return cardTextContainer;
+}
+// ---------------------------------------------------------
+function makeReleaseDate() {
+    const releaseDateText = document.createElement('h6');
+    const formattedReleaseDate = () => {
+        const [year, month, day] = outerAttributes.releaseDate.split('-').map(Number);
+        
+        const months = ['January', 'February', 'March', 'April', 'May', 'June', 
+            'July', 'August', 'September', 'October', 'November', 'December']
+        const writtenMonth = months[month - 1];
+        
+        let suffix = 'th';
+
+        if (/(11|12|13)$/.test(String(day))) {
+            suffix = 'th';
+        } else if (/1$/.test(String(day))) {
+            suffix = 'st';
+        } else if (/2$/.test(String(day))) {
+            suffix = 'nd';
+        } else if (/3$/.test(String(day))) {
+            suffix = 'rd';
+        }
+        return `Release: ${year} - ${writtenMonth} ${day}${suffix}`;
+    }
+    releaseDateText.textContent = formattedReleaseDate();
+    return releaseDateText;
+}
+// ---------------------------------------------------------
+function makeFlipButton() {
+    const flipButton = document.createElement('button');
+    flipButton.id = 'flip-button';
+    flipButton.textContent = 'Flip card';
+
+    flipButton.addEventListener('click', async () => {
+
+        showFrontFace = !showFrontFace;
+        const currentFace = showFrontFace ? currentCard : currentCardBack;
+        await buildPage(currentFace);
+    })
+
+    return flipButton;
 }
 // ---------------------------------------------------------
 function formatCardText(text) {
@@ -380,9 +564,6 @@ function formatCardText(text) {
                         formattedCosts.push(`${miscKeys[cost].amount} ${miscKeys[cost].fullText}`);
                     } else formattedCosts.push(miscKeys[cost].fullText);
                 }
-                // if (cost === 'T' || cost === 'Q') {
-                //     formattedCosts.push(cost === 'T' ? 'Tap' : 'Untap');    // skal byttes ut med objektsjekk lignende writtenMana
-                // }
             })
 
             const formattedGroup = formattedCosts.join(' + ');
@@ -392,125 +573,6 @@ function formatCardText(text) {
         })
     }
     return text;
-}
-// ---------------------------------------------------------
-function resetAmount() {
-    for (let outerKey in writtenMana) {
-        for (let innerKey in writtenMana[outerKey]) {
-            if (innerKey === 'amount') {
-                writtenMana[outerKey][innerKey] = 0;
-            }
-        }
-    }
-}
-// ---------------------------------------------------------
-function getGradient(gradientVersion) {
-    return currentCard.colorIdentity.map(identity => {
-        return gradientVersion[identity];
-    });
-}
-// ---------------------------------------------------------
-function makeTitle() {
-    const cardNameDiv = document.createElement('div');
-    cardNameDiv.id = 'card-name-div';
-    
-    const borderColors = getGradient(manaColors);
-
-    cardNameDiv.style.setProperty(
-        "--mana-border",
-        `linear-gradient(to right, ${borderColors.join(", ")})`
-    )
-    if (currentCard.colorIdentity.length <= 0) /*or layout:prototype*/ {
-        cardNameDiv.classList.add('colorless');
-        // if layout prototype,
-            // .colorless border = bordercolor
-    }
-
-    const cardName = document.createElement('h2');
-    cardName.textContent = currentCard.name;
-    cardNameDiv.append(cardName);
-    return cardNameDiv;
-}
-// ---------------------------------------------------------
-function makeManaInfo() {
-    const manaCostArray = currentCard.manaCost.match(/(?<={)[^}]+(?=})/g);
-    let manaText = [];
-
-    if (manaCostArray) {
-        manaCostArray.forEach((manaKey) => {
-            if (manaKey.match(/(\d)/g)) {
-                    manaText.push(manaKey === '0' ? manaKey : `${manaKey} of any color`);
-                    return;
-                }
-
-            writtenMana[manaKey].amount++;
-            if (writtenMana[manaKey].amount > 1) {
-                manaText.pop();
-            }
-
-            manaText.push(`${writtenMana[manaKey].amount} ${writtenMana[manaKey].fullText}`);
-        });
-    } else {
-        manaText.push('none');
-    }
-    
-    const manaInfo = document.createElement('p');
-    manaInfo.textContent = `Cost: ${manaText.join(' + ')}`;
-
-    return manaInfo;
-}
-// ---------------------------------------------------------
-function makeCardTypeInfo() {
-    console.log('-------------');
-    console.log(currentCard.typeLine);
-    console.log(currentCard.types);
-
-    const cardTypeInfo = document.createElement('div');
-    cardTypeInfo.id = "type-div";
-
-    currentCard.types.forEach((type) => {
-        if (type === '—') {
-            const hyphen = document.createElement('span');
-            hyphen.textContent = type;
-            cardTypeInfo.append(hyphen);
-        } else {
-            const typeLink = document.createElement('a');
-            typeLink.textContent = type;
-            typeLink.href = `https://scryfall.com/search?q=type%3A${type}`;
-            typeLink.target = '_blank';
-            cardTypeInfo.append(typeLink);
-        }
-    });
-    return cardTypeInfo;
-}
-// ---------------------------------------------------------
-function makeCardText() {
-    if (!currentCard.cardText) return '';
-
-    const cardTextContainer = document.createElement('div');
-    cardTextContainer.id = 'card-text-container';
-
-    const formattedCardText = formatCardText(currentCard.cardText);
-
-    const cardTextLines = formattedCardText.split('\n');
-    
-    cardTextLines.forEach((textLine) => {
-        const textLineDiv = document.createElement('div');
-        textLineDiv.className = 'text-line-div';
-
-        assignLinksAndSpans(textLine, currentCard.keywords, textLineDiv);
-
-        // if textLine starts with LEVEL, append some kind of divider first
-        // also if textLine is exactly "[any combi of {mana}]: Level [digit]"
-        cardTextContainer.append(textLineDiv);
-
-        const backgroundColors = getGradient(manaPastels);
-        cardTextContainer.style.setProperty(
-            "--mana-border",
-            `linear-gradient(to right, ${backgroundColors.join(", ")})`
-        );
-    })
-    return cardTextContainer;
 }
 // ---------------------------------------------------------
 function assignLinksAndSpans(text, keywords, container) {
