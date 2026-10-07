@@ -155,7 +155,7 @@ document.addEventListener('change', e => {
             filterQueryArray.push("legal:commander ");
         } else {
             filterVC.checked = false;
-            if (filterVC.includes("is:commander ")) {
+            if (filterQueryArray.includes("is:commander ")) {
                 filterQueryArray.splice(filterQueryArray.findIndex(query => query === "is:commander "), 1);
             } else {
                 filterQueryArray.splice(filterQueryArray.findIndex(query => query === "legal:commander "), 1);
