@@ -26,6 +26,10 @@
 /* GENERAL -------------------------------------------------------- */
 /* ------- */
 
+input[type=checkbox] {
+    accent-color: #a9ffe7;
+}
+
 * {
     box-sizing: border-box;
 }
@@ -67,7 +71,7 @@ button {
 }
 button:hover {
     animation: gradient-shift 0.2s;
-    scale: 1.1;
+    scale: 1.05;
 }
 @keyframes gradient-shift {
     0% { background: linear-gradient(120deg, #FFFFFF, #E3FBFF, #E6D9EB, #FFE3E3, #F3FFEA); }
@@ -131,9 +135,9 @@ input#query { /* temporary element not meant to be used by user */
     border: none;
     background-color: transparent;
     cursor: default;
-    :focus-visible {
-        outline: none;
-    }
+}
+input#query:focus-visible {
+    outline: none;
 }
 
 /* --------- */
@@ -280,6 +284,22 @@ div.text-line-div {                     /* individual lines from card text area 
 */
 
 
+@media screen and (max-width: 1040px) {
+    h1 {
+        font-size: var(--h1-size-1);
+    }
+    h2 {
+        font-size: var(--h2-size-1);
+    }
+    header {
+        flex-wrap: wrap;
+        gap: 0 4vw;
+    }
+    button {
+        left: 80%;
+    }
+}
+
 @media (max-width: 817px) {
     h1 {
         margin-bottom: 5px;
@@ -291,17 +311,7 @@ div.text-line-div {                     /* individual lines from card text area 
         flex-direction: row;
         align-items: center;
     }
-}
-
-@media screen and (max-width: 1040px) {
-    h1 {
-        font-size: var(--h1-size-1);
-    }
-    h2 {
-        font-size: var(--h2-size-1);
-    }
-    header {
-        flex-wrap: wrap;
-        gap: 0 4vw;
+    button {
+        left: 50%;
     }
 }

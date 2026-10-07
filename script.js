@@ -4,9 +4,12 @@ const image = document.getElementById("image");
 const infoContainer = document.getElementById("card-attributes-container");
 const imgLoading = "src/card-image-loading.png";
 const imgMissing = "src/card-image-missing.png";
+const filterLS = document.getElementById("legal-standard");
+const filterLC = document.getElementById("legal-commander");
+const filterVC = document.getElementById("valid-commander");
 
 // -------------------------------------------------------------------------------------
-// --------------------------------Global objects---------------------------------------
+// ------------------------Global objects and listeners---------------------------------
 // -------------------------------------------------------------------------------------
 
 let outerAttributes = {
@@ -112,7 +115,9 @@ const writtenMana = {
     '2/G': {fullText: 'green or double the mana of any colors', amount: 0},
 }
 
-//let blobbedIMG;
+const filterQueryArray = JSON.parse(localStorage.getItem('queries')) || [];
+const filterQueryString = filterQueryArray.join('');
+
 //-------------------------------------------------------------------------
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -131,6 +136,47 @@ randomBtn.addEventListener('click', async () => {
     image.src = imgLoading;
     await getData();
     await buildPage(currentCard);
+})
+
+document.addEventListener('change', e => {
+    if (e.target === filterLS) {
+        if (filterLS.checked) {
+            filterQueryArray.push("legal:standard ");
+        } else {
+            filterQueryArray.splice(filterQueryArray.findIndex(query => query === "legal:standard "), 1);
+        }
+    }
+    if (e.target === filterLC) {
+        if (filterLC.checked) {
+            if (filterVC.checked) {
+                filterQueryArray.splice(filterQueryArray.findIndex(query => query === "is:commander "), 1);
+                filterVC.checked = false;
+            }
+            filterQueryArray.push("legal:commander ");
+        } else {
+            filterVC.checked = false;
+            if (filterVC.includes("is:commander ")) {
+                filterQueryArray.splice(filterQueryArray.findIndex(query => query === "is:commander "), 1);
+            } else {
+                filterQueryArray.splice(filterQueryArray.findIndex(query => query === "legal:commander "), 1);
+            }
+        }
+    }
+    if (e.target === filterVC) {
+        if (filterVC.checked) {
+            filterLC.checked = true;
+            filterQueryArray.push("is:commander ");
+            if (filterQueryArray.includes("legal:commander ")) {
+                filterQueryArray.splice(filterQueryArray.findIndex(query => query === "legal:commander "), 1);
+            }
+        } else {
+            filterQueryArray.splice(filterQueryArray.findIndex(query => query === "is:commander "), 1);
+            if (filterLC.checked) {
+                filterQueryArray.push("legal:commander ");
+            }
+        }
+    }
+    localStorage.setItem('queries', JSON.stringify(filterQueryArray));
 })
 
 //-------------------------------------------------------------------------
@@ -169,8 +215,8 @@ DONE:
 // -------------------------------------------------------------------------------------
 
 async function getData() {
-    const encoded = encodeURIComponent("lang:en " + "include:extras "
-        + "not:battle not:front_card not:art_series not:double_faced_token " + queryInput.value);
+    const encoded = encodeURIComponent("lang:en " + "not:battle not:front_card not:art_series not:double_faced_token " 
+        + filterQueryArray.join('') + queryInput.value);
     // https://scryfall.com/docs/syntax
     const result = await fetch(`https://api.scryfall.com/cards/random?q=${encoded}`, {
         headers:{
@@ -182,6 +228,8 @@ async function getData() {
     const data = await result.json();
     await setData(data);
 
+    console.log('------FILTER QUERIES:------\n', filterQueryArray.join(''));
+    console.log('------ENCODED FULL QUERY:------\n', encoded);
     console.log('-------------------Original API data:------------------------\n', data);
 }
 
@@ -221,16 +269,17 @@ function buildPage(face) {
     console.log('-------- Outer Attributes --------\n', outerAttributes);
     console.log('------FACE 1-------\n', currentCard);
     console.log('------FACE 2-------\n', currentCardBack);
-// ---------------------------------------------------------------
+    // ---------------------------------------------------------------
     // image half:
     // -----------
-    image.src = face.imageUrl;
-    image.setAttribute('title', 'Click to view card on the Scryfall website');
-    image.addEventListener('mousedown', (e) => {
+    const linkToScryfall = (e) => {
         e.preventDefault();
         if (e.button === 2) return; // prevent opening if right-click
         window.open(outerAttributes.scryfallUrl, 'scryfall');
-    })
+    };
+    image.src = face.imageUrl;
+    image.setAttribute('title', 'Click to view card on the Scryfall website');
+    image.addEventListener('mousedown', linkToScryfall);
 
 // ---------------------------------------------------------------
     // info half:
@@ -241,6 +290,8 @@ function buildPage(face) {
         const missingCardMessage = document.createElement('h2');
         missingCardMessage.textContent = 'No card found';
         infoContainer.append(missingCardMessage);
+        image.removeAttribute('title');
+        image.removeEventListener('mousedown', linkToScryfall);
         return;
     }
 // ------------------------------------------------------- TEMPORARY STUFF -----------------------------------------------------
