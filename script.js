@@ -9,7 +9,7 @@ const filterLC = document.getElementById("legal-commander");
 const filterVC = document.getElementById("valid-commander");
 
 // -------------------------------------------------------------------------------------
-// ------------------------Global objects and listeners---------------------------------
+// -----------------------Global objects and eventlisteners-----------------------------
 // -------------------------------------------------------------------------------------
 
 let outerAttributes = {
@@ -32,6 +32,7 @@ class CardFace {
         this.typeLine = "";
         this.keywords = [];
         this.cardText = "";
+        this.powerToughness = [];
     }
 }
 const currentCard = new CardFace();
@@ -39,7 +40,10 @@ const currentCardBack = new CardFace();
 let showFrontFace = true;
 
 const manaColors = {
-    W: '#D6D4C2',
+    // W: '#D6D4C2',
+    // W: '#fffef4',
+    // W: '#fffef4',
+    W: '#dcdacc',
     U: '#0475B1',
     B: '#393335',
     R: '#BE2E2E',
@@ -118,6 +122,12 @@ const writtenMana = {
 const filterQueryArray = JSON.parse(localStorage.getItem('queries')) || [];
 const filterQueryString = filterQueryArray.join('');
 
+const linkToScryfall = (e) => {
+    e.preventDefault();
+    if (e.button === 2) return; // prevent opening if right-click
+    window.open(outerAttributes.scryfallUrl, /*'scryfall'*/);
+};
+
 //-------------------------------------------------------------------------
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -134,8 +144,10 @@ randomBtn.addEventListener('click', async () => {
     
     isCardMissing = false;
     image.src = imgLoading;
+    image.removeEventListener('mousedown', linkToScryfall);
+
     await getData();
-    await buildPage(currentCard);
+    buildPage(currentCard);
 })
 
 document.addEventListener('change', e => {
@@ -148,32 +160,33 @@ document.addEventListener('change', e => {
     }
     if (e.target === filterLC) {
         if (filterLC.checked) {
-            if (filterVC.checked) {
-                filterQueryArray.splice(filterQueryArray.findIndex(query => query === "is:commander "), 1);
-                filterVC.checked = false;
-            }
+            // if (filterVC.checked) {
+            //     filterQueryArray.splice(filterQueryArray.findIndex(query => query === "is:commander "), 1);
+            //     filterVC.checked = false;
+            // }                                this was an unnecessary check
             filterQueryArray.push("legal:commander ");
         } else {
             filterVC.checked = false;
             if (filterQueryArray.includes("is:commander ")) {
                 filterQueryArray.splice(filterQueryArray.findIndex(query => query === "is:commander "), 1);
-            } else {
-                filterQueryArray.splice(filterQueryArray.findIndex(query => query === "legal:commander "), 1);
-            }
+            } 
+            // else {
+            // }
+            filterQueryArray.splice(filterQueryArray.findIndex(query => query === "legal:commander "), 1);
         }
     }
     if (e.target === filterVC) {
         if (filterVC.checked) {
             filterLC.checked = true;
             filterQueryArray.push("is:commander ");
-            if (filterQueryArray.includes("legal:commander ")) {
-                filterQueryArray.splice(filterQueryArray.findIndex(query => query === "legal:commander "), 1);
-            }
+            // if (filterQueryArray.includes("legal:commander ")) {
+            //     filterQueryArray.splice(filterQueryArray.findIndex(query => query === "legal:commander "), 1);
+            // }
         } else {
             filterQueryArray.splice(filterQueryArray.findIndex(query => query === "is:commander "), 1);
-            if (filterLC.checked) {
-                filterQueryArray.push("legal:commander ");
-            }
+            // if (filterLC.checked) {
+            //     filterQueryArray.push("legal:commander ");
+            // }                    these were here bc I thought is:commander would encompass legal:commander
         }
     }
     localStorage.setItem('queries', JSON.stringify(filterQueryArray));
@@ -226,18 +239,21 @@ async function getData() {
     });
 
     const data = await result.json();
-    await setData(data);
+
+
+    console.log('-------------------Original API data:------------------------\n', data);
+
+    setData(data);
 
     console.log('------FILTER QUERIES:------\n', filterQueryArray.join(''));
     console.log('------ENCODED FULL QUERY:------\n', encoded);
-    console.log('-------------------Original API data:------------------------\n', data);
 }
 
 
 // -------------------------------------------------------------------------------------
 // -------------------------------------------------------------------------------------
 
-async function setData(data) {
+function setData(data) {
     if (data.status === 404) {
         isCardMissing = true;
         currentCard.imageUrl = imgMissing;
@@ -272,11 +288,7 @@ function buildPage(face) {
     // ---------------------------------------------------------------
     // image half:
     // -----------
-    const linkToScryfall = (e) => {
-        e.preventDefault();
-        if (e.button === 2) return; // prevent opening if right-click
-        window.open(outerAttributes.scryfallUrl, 'scryfall');
-    };
+    
     image.src = face.imageUrl;
     image.setAttribute('title', 'Click to view card on the Scryfall website');
     image.addEventListener('mousedown', linkToScryfall);
@@ -327,12 +339,14 @@ function buildPage(face) {
     const manaInfo = makeManaInfo(face);
     const cardTypeInfo = makeCardTypeInfo(face);
     const cardText = makeCardText(face);
+    const legalities = makeLegalities();
     const releaseDate = makeReleaseDate();
 
     const cardAttributes = document.createElement('div');
     cardAttributes.className = 'card-attributes-inner-container';
-    
+
     cardAttributes.append(manaInfo, cardTypeInfo);
+
     if (cardText !== '') {
         cardAttributes.append(cardText);
     }
@@ -340,7 +354,12 @@ function buildPage(face) {
         const flipButton = makeFlipButton();
         cardAttributes.append(flipButton);
     }
-    cardAttributes.append(releaseDate);
+    cardAttributes.append(legalities, releaseDate);
+
+    if (face.typeLine.includes('Creature')) {
+        const cardStatsDiv = makecardStatsDiv(face);
+        cardAttributes.append(cardStatsDiv);
+    }
 
     infoContainer.append(title, cardAttributes);
 }
@@ -355,12 +374,14 @@ function checkCommanderValidity() {
     if (currentCard.typeLine.includes("Legendary", "Creature") || currentCard.cardText.includes("can be your commander")) {
         return true;
     } else { return; }
-}
+}   // I probably don't need this function
 // ---------------------------------------------------------
 function handleLayouts(data) {
-    const multiFaceLayouts = ['split', 'flip', 'transform', 'modal', 'double_faced', 'art_series', 'reversible', 'saga'];
+    const multiFaceLayouts = ['split', 'flip', 'transform', 'modal', 'double_faced',
+                                'art_series', 'reversible', 'saga', 'adventure'];
 
     if (multiFaceLayouts.includes(data.layout)) {
+        console.log('???');
         return data.card_faces ?? [{ ...data }];
     }
 
@@ -375,6 +396,7 @@ function setCardFrontData(frontFace) {
     currentCard.manaCost = frontFace.mana_cost ?? '';
     currentCard.typeLine = frontFace.type_line;
     currentCard.cardText = frontFace.oracle_text;
+    currentCard.powerToughness.push(frontFace.power, frontFace.toughness);
 
     frontFace.keywords?.forEach(keyword => {
         currentCard.keywords.push(keyword.toLowerCase());
@@ -394,7 +416,9 @@ function setImageData(face) {
 }
 // ---------------------------------------------------------
 function setCardBackData(backFace) {
-    if (backFace.image_uris) {
+    if (outerAttributes.layout === 'adventure') {
+        return;
+    } else if (backFace.image_uris) {
         if (backFace.image_uris.png) {
             currentCardBack.imageUrl = backFace.image_uris.png;
         } else if (backFace.image_uris.large) {
@@ -533,10 +557,42 @@ function makeCardText(face) {
         const backgroundColors = getGradient(manaPastels);
         cardTextContainer.style.setProperty(
             "--mana-border",
-            `linear-gradient(to right, ${backgroundColors.join(", ")})`
+            `linear-gradient(-10deg, ${backgroundColors.join(", ")})`
         );
     })
     return cardTextContainer;
+}
+// ---------------------------------------------------------
+function makecardStatsDiv(face) {
+    const cardStatsDiv = document.createElement('div');
+    const power = document.createElement('p');
+    const toughness = document.createElement('p');
+    
+    cardStatsDiv.id = 'card-stats-container';
+    power.className = toughness.className = 'card-stats';
+
+    power.textContent = `Power: ${face.powerToughness[0]}`;
+    toughness.textContent = `Toughness: ${face.powerToughness[1]}`;
+
+    cardStatsDiv.append(power, toughness);
+    return cardStatsDiv;
+}
+// ---------------------------------------------------------
+function makeLegalities() {
+    const legalitiesDiv = document.createElement('div');
+    const legalitiesText = document.createElement('h6');
+    const legalityStandard = document.createElement('p');
+    const legalityCommander = document.createElement('p');
+
+    legalitiesDiv.id = 'legalities-div';
+    legalityStandard.className = legalityCommander.className= 'legality-tags';
+
+    legalitiesText.textContent = 'Legalities:';
+    legalityStandard.textContent = `Standard: ${outerAttributes.legalities.standard.replace('_', (' '))}`;
+    legalityCommander.textContent = `Commander: ${outerAttributes.legalities.commander.replace('_', (' '))}`;
+
+    legalitiesDiv.append(legalitiesText, legalityStandard, legalityCommander);
+    return legalitiesDiv;
 }
 // ---------------------------------------------------------
 function makeReleaseDate() {
@@ -561,6 +617,7 @@ function makeReleaseDate() {
         }
         return `Release: ${year} - ${writtenMonth} ${day}${suffix}`;
     }
+    releaseDateText.id = 'release-date-text';
     releaseDateText.textContent = formattedReleaseDate();
     return releaseDateText;
 }
@@ -574,7 +631,7 @@ function makeFlipButton() {
 
         showFrontFace = !showFrontFace;
         const currentFace = showFrontFace ? currentCard : currentCardBack;
-        await buildPage(currentFace);
+        buildPage(currentFace);
     })
 
     return flipButton;
@@ -607,12 +664,16 @@ function formatCardText(text) {
                     formattedCosts.push(`${cost} of any color`);
                 }
                 if (miscKeys[cost]) {
-                    if (miscKeys[cost].amount) {
+                    if (typeof miscKeys[cost].amount === 'number') {
                         miscKeys[cost].amount++;
                         if (miscKeys[cost].amount > 1) {
                             formattedCosts.pop();
                         }
-                        formattedCosts.push(`${miscKeys[cost].amount} ${miscKeys[cost].fullText}`);
+                        if (miscKeys[cost].amount === 1) {
+                            formattedCosts.push(`1 ${miscKeys[cost].fullText.slice(0, -3)}`);
+                        } else {
+                            formattedCosts.push(`${miscKeys[cost].amount} ${miscKeys[cost].fullText}`);
+                        }
                     } else formattedCosts.push(miscKeys[cost].fullText);
                 }
             })

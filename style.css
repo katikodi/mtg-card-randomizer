@@ -1,7 +1,11 @@
 :root {
     --darkpurple: #19161ce8;
-    --fadedpurple: hsla(-80 40% 15% / 0.2);
+    --fadedpurple: hsla(-80 40% 15% / 0.3);
     --bg-color: #fafaf9;
+    --bg-color-alt1: #d8d1d9;
+    --bg-color-alt2: #e3e6e8;
+    --bg-color-alt3: #ece2eb;
+    --bg-color-alternative: #d7d4ec;
     --main-text-font: "League Spartan";
     --header-font: "Barlow";
     --h1-size-1: 2.2em;
@@ -27,7 +31,7 @@
 /* ------- */
 
 input[type=checkbox] {
-    accent-color: #a9ffe7;
+    accent-color: #00ffea;
 }
 
 * {
@@ -37,6 +41,7 @@ body {
     margin: 0;
     padding: 0;
     background-color: var(--bg-color);
+    /* background-image: linear-gradient(to bottom, var(--bg-color-alt1), var(--bg-color-alt3)); */
 }
 header {
     padding: 2.5vh 8vw;
@@ -65,7 +70,7 @@ button {
     font-family: var(--header-font);
     font-size: 1em;
     text-wrap: nowrap;
-    filter: drop-shadow(0 3px 3px hsla(-80 40% 15% / 0.4 ));
+    filter: drop-shadow(0 3px 2px hsla(-80 40% 15% / 0.15 )); /* var 2px blur og 0.4 opacity */
     scale: 1;
     transition: scale 0.3s ease;
 }
@@ -102,7 +107,7 @@ h3 {
     color: white;
 }
 h6 {
-    margin: 10px 0;
+    margin: 5px 0;
     font-family: var(--header-font);
     font-size: 0.8em;
 }
@@ -127,7 +132,9 @@ p, a, span {
     color: black;
 }
 a {
+    display: inline-flex;
     color: darkblue;
+    transform: skew(-10deg);
 }
 input#query { /* temporary element not meant to be used by user */
     position: absolute;
@@ -210,7 +217,7 @@ input#query:focus-visible {
     background-image: var(--mana-border);
     z-index: -1;
     inset: -4px; /* var -3 */
-    filter: drop-shadow(0 2px 2px #19161c3d);
+    /* filter: drop-shadow(0 2px 2px #19161c3d); */
 }
 .colorless {
     border: 3px gray dashed;
@@ -219,7 +226,7 @@ input#query:focus-visible {
 .card-attributes-inner-container {
     display: flex;
     flex-direction: column;
-    margin: 0 15px;
+    margin: 0 15px 30px 0;
 }
 
 .card-attributes-inner-container > p {  /* mana cost styling */
@@ -229,14 +236,16 @@ input#query:focus-visible {
 div#type-div {                          /* typeline styling */
     display: flex;
     flex-direction: row;
+    flex-wrap: wrap;
     gap: 5px;
+    margin-bottom: 10px;
 }
 
 div#card-text-container {               /* styling card text area */
     display: flex;
     flex-direction: column;
     gap: 5px;
-    margin: 10px -10px;
+    margin: 0 -10px;
     padding: 10px;
     border: 2px rgba(0, 0, 0, 0.5) solid;
     border-radius: 15px;
@@ -245,13 +254,26 @@ div#card-text-container {               /* styling card text area */
     background-color: #fafaf908;
 }
 div.text-line-div {                     /* individual lines from card text area */
-    /*
-    display: flex;
-    flex-direction: row;
-    flex-wrap: wrap;
-    gap: 0 5px;
-    */
     margin: 3px;
+}
+/* h6#release-date-text {
+    margin-top: 20px;
+} */
+#legalities-div {
+    margin-top: 20px;
+    anchor-name: --pt-anchor;
+}
+p.legality-tags {
+    font-size: 0.9em;
+}
+#card-stats-container {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    width: 34vw;
+    position: fixed;
+    position-anchor: --pt-anchor;
+    top: calc(anchor(top) - 15px);
 }
 #flip-button {
     width: fit-content;
@@ -301,6 +323,27 @@ div.text-line-div {                     /* individual lines from card text area 
 }
 
 @media (max-width: 817px) {
+    #main-container {
+        flex-direction: column;
+        align-items: center;
+    }
+    #divider {
+        position: absolute;
+        visibility: hidden;
+    }
+    #card-name-div {
+        margin-top: 50px;
+    }
+    #card-attributes-container {
+        max-width: 80vw;
+    }
+    div#card-text-container {
+        max-width: none;
+    }
+    #card-stats-container {
+        width: 75vw;
+    }
+
     h1 {
         margin-bottom: 5px;
     }
