@@ -32,7 +32,8 @@ class CardFace {
         this.typeLine = "";
         this.keywords = [];
         this.cardText = "";
-        this.powerToughness = [];
+        this.power = "";
+        this.toughness = "";
     }
 }
 const currentCard = new CardFace();
@@ -396,8 +397,10 @@ function setCardFrontData(frontFace) {
     currentCard.manaCost = frontFace.mana_cost ?? '';
     currentCard.typeLine = frontFace.type_line;
     currentCard.cardText = frontFace.oracle_text;
-    currentCard.powerToughness.push(frontFace.power, frontFace.toughness);
-
+    if (currentCard.typeLine.includes('Creature')) {
+        currentCard.power = frontFace.power;
+        currentCard.toughness = frontFace.toughness;
+    }
     frontFace.keywords?.forEach(keyword => {
         currentCard.keywords.push(keyword.toLowerCase());
     })
@@ -416,24 +419,27 @@ function setImageData(face) {
 }
 // ---------------------------------------------------------
 function setCardBackData(backFace) {
-    if (outerAttributes.layout === 'adventure') {
-        return;
-    } else if (backFace.image_uris) {
-        if (backFace.image_uris.png) {
-            currentCardBack.imageUrl = backFace.image_uris.png;
-        } else if (backFace.image_uris.large) {
-            currentCardBack.imageUrl = backFace.image_uris.large;
-        } else {
-            currentCardBack.imageUrl = backFace.image_uris.normal;
-        }
-    } else currentCardBack.imageUrl = imgMissing;
+    // if (outerAttributes.layout === 'adventure') {
+    //     return;
+    // } else if (backFace.image_uris) {
+    //     if (backFace.image_uris.png) {
+    //         currentCardBack.imageUrl = backFace.image_uris.png;
+    //     } else if (backFace.image_uris.large) {
+    //         currentCardBack.imageUrl = backFace.image_uris.large;
+    //     } else {
+    //         currentCardBack.imageUrl = backFace.image_uris.normal;
+    //     }
+    // } else currentCardBack.imageUrl = imgMissing;
 
     currentCardBack.name = backFace.name;
     currentCardBack.colorIdentity = backFace.colors;
     currentCardBack.manaCost = backFace.mana_cost ?? '';
     currentCardBack.typeLine = backFace.type_line;
     currentCardBack.cardText = backFace.oracle_text;
-
+    if (currentCardBack.typeLine.includes('Creature')) {
+        currentCardBack.power = backFace.power;
+        currentCardBack.toughness = backFace.toughness;
+    }
     backFace.keywords?.forEach(keyword => {
         currentCardBack.keywords.push(keyword.toLowerCase());
     })
@@ -571,8 +577,8 @@ function makecardStatsDiv(face) {
     cardStatsDiv.id = 'card-stats-container';
     power.className = toughness.className = 'card-stats';
 
-    power.textContent = `Power: ${face.powerToughness[0]}`;
-    toughness.textContent = `Toughness: ${face.powerToughness[1]}`;
+    power.textContent = `Power: ${face.power}`;
+    toughness.textContent = `Toughness: ${face.toughness}`;
 
     cardStatsDiv.append(power, toughness);
     return cardStatsDiv;
