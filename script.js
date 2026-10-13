@@ -419,17 +419,18 @@ function setImageData(face) {
 }
 // ---------------------------------------------------------
 function setCardBackData(backFace) {
-    // if (outerAttributes.layout === 'adventure') {
-    //     return;
-    // } else if (backFace.image_uris) {
-    //     if (backFace.image_uris.png) {
-    //         currentCardBack.imageUrl = backFace.image_uris.png;
-    //     } else if (backFace.image_uris.large) {
-    //         currentCardBack.imageUrl = backFace.image_uris.large;
-    //     } else {
-    //         currentCardBack.imageUrl = backFace.image_uris.normal;
-    //     }
-    // } else currentCardBack.imageUrl = imgMissing;
+    const l = outerAttributes.layout;
+    if (l === 'adventure' || l === 'split' || l === 'prepare') {
+        return;
+    } else if (backFace.image_uris) {
+        if (backFace.image_uris.png) {
+            currentCardBack.imageUrl = backFace.image_uris.png;
+        } else if (backFace.image_uris.large) {
+            currentCardBack.imageUrl = backFace.image_uris.large;
+        } else {
+            currentCardBack.imageUrl = backFace.image_uris.normal;
+        }
+    } else currentCardBack.imageUrl = imgMissing;
 
     currentCardBack.name = backFace.name;
     currentCardBack.colorIdentity = backFace.colors;

@@ -1,5 +1,5 @@
 :root {
-    --darkpurple: #19161ce8;
+    --darkpurple: #19161cf0;
     --fadedpurple: hsla(-80 40% 15% / 0.3);
     --bg-color: #fafaf9;
     --bg-color-alt1: #d8d1d9;
@@ -8,10 +8,12 @@
     --bg-color-alternative: #d7d4ec;
     --main-text-font: "League Spartan";
     --header-font: "Barlow";
-    --h1-size-1: 2.2em;
-    --h1-size-2: 2.5em;
-    --h2-size-1: 1.5em;
-    --h2-size-2: 2em;
+    --h1-size-small: 2.2em;
+    --h1-size-medium: 2.5em;
+    --h1-size-large: 2.7em;
+    --h2-size-small: 1.5em;
+    --h2-size-medium: 2em;
+    --h2-size-large: 2.2em;
     --mana-border: linear-gradient(to right, var(--bg-color), var(--bg-color));
 }
 .league-spartan {
@@ -31,7 +33,7 @@
 /* ------- */
 
 input[type=checkbox] {
-    accent-color: #00ffea;
+    accent-color: #00d9ff;
 }
 
 * {
@@ -40,11 +42,13 @@ input[type=checkbox] {
 body {
     margin: 0;
     padding: 0;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
     background-color: var(--bg-color);
     /* background-image: linear-gradient(to bottom, var(--bg-color-alt1), var(--bg-color-alt3)); */
 }
 header {
-    padding: 2.5vh 8vw;
+    padding: 2.5vh 10vw;
     background-image: url('src/halfcleankaleidaonblack.png');
     background-repeat: no-repeat;
     background-position: center;
@@ -54,6 +58,7 @@ header {
     display: flex;
     align-items: center;
     gap: 4vw;
+    justify-content: space-between;
 }
 
 button {
@@ -90,13 +95,13 @@ button:hover {
 h1 {
     color: white;
     font-family: var(--header-font);
-    font-size: var(--h1-size-2);
+    font-size: var(--h1-size-medium);
     margin: 0;
     text-wrap: nowrap;
 }
 h2 {
     font-family: var(--header-font);
-    font-size: var(--h2-size-2);
+    font-size: var(--h2-size-medium);
     margin: 0;
     padding: 5px;
 }
@@ -105,6 +110,7 @@ h3 {
     margin: 0;
     padding: 5px;
     color: white;
+    letter-spacing: 1.5px;
 }
 h6 {
     margin: 5px 0;
@@ -114,11 +120,15 @@ h6 {
 #filters {
     display: flex;
     flex-direction: column;
-    /* align-items: center; */
+    justify-content: flex-end;
+    align-items: flex-end;
 }
 #all-filters {
     display: flex;
     flex-direction: row;
+}
+.filter-inputs {
+    z-index: 1;
 }
 label.filter-label {
     font-family: var(--main-text-font);
@@ -168,6 +178,7 @@ input#query:focus-visible {
     width: fit-content;
     height: fit-content;
     border-radius: 16px;
+    anchor-name: --button-anchor;
 }
 
 #image {
@@ -308,10 +319,10 @@ p.legality-tags {
 
 @media screen and (max-width: 1040px) {
     h1 {
-        font-size: var(--h1-size-1);
+        font-size: var(--h1-size-small);
     }
     h2 {
-        font-size: var(--h2-size-1);
+        font-size: var(--h2-size-small);
     }
     header {
         flex-wrap: wrap;
@@ -322,10 +333,16 @@ p.legality-tags {
     }
 }
 
-@media (max-width: 817px) {
+@media (max-width: 860px) {
     #main-container {
         flex-direction: column;
         align-items: center;
+    }
+    #random-card-container {
+        position: relative;
+        margin: 0 12vw 1vh 12vw;
+        anchor-name: --button-anchor;
+        left: -10vw;
     }
     #divider {
         position: absolute;
@@ -335,17 +352,13 @@ p.legality-tags {
         margin-top: 50px;
     }
     #card-attributes-container {
-        max-width: 80vw;
+        max-width: 75vw;
     }
     div#card-text-container {
         max-width: none;
     }
     #card-stats-container {
         width: 75vw;
-    }
-
-    header {
-        justify-content: space-between;
     }
     h1 {
         margin-bottom: 10px;
@@ -354,18 +367,74 @@ p.legality-tags {
         flex-direction: column;
     }
     #filters {
-        flex-direction: row;
+        /* flex-direction: row; */
         align-items: center;
     }
-    button {
-        left: 50%;
+    #sticky-button-area {
+        z-index: 1;
+        position: fixed;
+        height: 85svh;
+        position-anchor: --button-anchor;
+        top: calc(anchor(bottom) - 50vw);
+        right: calc(anchor(right) - 36vw);
+        margin-right: 5vw;
+    }
+    button#get-random-btn {
+        padding: 10%;
+        /* border-radius: 25%; */
+        text-align: center;
+        text-wrap: wrap;
+        position: sticky;
+        height: fit-content;
+        max-width: 17vw;
+        /* left: 15%;
+        top: 85svh; */
     }
 }
 
-@media (max-width: 580px) {
+@media (max-width: 480px) {
     #filters {
         position: relative;
         right: 15px;
         /* margin-left: 15vw; */
+    }
+    h1 {
+        margin-left: 30vw;
+    }
+    #random-card-container {
+        left: 0;
+    }
+    button#get-random-btn {
+        visibility: hidden;
+    }
+    #card-name-div {
+        margin-top: 25px;
+    }
+}
+
+@media (max-width: 360px) {
+    h1 {
+        margin-left: 20vw;
+    }
+}
+
+@media (min-width: 2000px) {
+    h1 {
+        font-size: var(--h1-size-large);
+    }
+    h2 {
+        font-size: var(--h2-size-large);
+    }
+    h3 {
+        font-size: 1.4em;
+    }
+    p, a, span, h6 {
+        font-size: 1.2em;
+    }
+    label, p.legality-tags {
+        font-size: 1.2em;
+    }
+    .filter-inputs {
+        scale: 1.1;
     }
 }
